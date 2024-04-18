@@ -1,3 +1,4 @@
+#pragma once
 #include <spdlog/async.h>
 
 // Debug mode

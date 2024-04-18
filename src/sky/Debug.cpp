@@ -11,10 +11,6 @@
 // fmt
 #include <fmt/color.h>
 
-// imgui
-#include <imgui.h>
-#include <imgui-SFML.h>
-
 namespace sky
 {
 	namespace dbg

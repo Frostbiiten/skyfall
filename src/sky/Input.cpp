@@ -12,8 +12,6 @@
 // fmt
 #include <fmt/format.h>
 
-// Imgui
-
 namespace sky
 {
 	namespace in

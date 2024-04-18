@@ -1,5 +1,3 @@
-#include <iostream>
-
 // std
 #include <stack>
 
@@ -10,10 +8,17 @@
 #include <sky/AppMan.h>
 #include <sky/Debug.h>
 #include <sky/Input.h>
+#include <sky/Tilemap.h>
+
+// GAME
+#include <game/Room.h>
 
 // imgui
 #include <imgui.h>
 #include <imgui-SFML.h>
+
+// FLECS
+#include <flecs.h>
 
 namespace sky
 {
@@ -159,7 +164,11 @@ namespace sky
 		std::unique_ptr<sf::RenderWindow> windowPtr;
 		std::unique_ptr<sf::RenderTexture> bufferPtr;
 		sf::Sprite bufferSprite;
+		sf::Image cpuBuffer;
 		sf::View windowView;
+
+		sf::Shader* blur;
+		sky::lvl::tilemap map{ 16, 16, 200, 200, 20 };
 
 		void init()
 		{
@@ -182,6 +191,129 @@ namespace sky
 
 			bufferSprite = sf::Sprite(bufferPtr->getTexture()); // <- stable ref to renderTexture result buffer
 			bufferSprite.setOrigin(pixelWidth / 2.f, pixelHeight / 2.f);
+
+			sf::Shader s{};
+			if (s.loadFromFile("blur.frag", sf::Shader::Fragment))
+			{
+				blur = &s;
+			}
+
+			map.load();
+		}
+
+		void boxblur(sf::Image& img, int radius)
+		{
+			auto mirror = [](int in, int range)
+			{
+				if (in < 0) return -in;
+				else if (in >= range) return 2 * range - in;
+				return in;
+			};
+
+			auto size = img.getSize();
+
+			sf::Image newImg;
+			newImg.create(size.x, size.y);
+
+			// blurs are separable
+			for (int y = 0; y < size.y; ++y)
+			{
+				for (int x = 0; x < size.x; ++x)
+				{
+					int r = 0;
+					int g = 0;
+					int b = 0;
+
+					// could optimize this with a rolling average ...
+
+					for (int xOffset = -radius; xOffset <= radius; ++xOffset)
+					{
+						int newX = mirror(x + xOffset, size.x);
+						auto px = img.getPixel(newX, y);
+						r += px.r;
+						g += px.g;
+						b += px.b;
+					}
+
+					r /= (2 * radius + 1);
+					g /= (2 * radius + 1);
+					b /= (2 * radius + 1);
+
+					newImg.setPixel(x, y, sf::Color(r, g, b));
+				}
+			}
+
+			img = newImg;
+
+			for (int y = 0; y < size.y; ++y)
+			{
+				for (int x = 0; x < size.x; ++x)
+				{
+					int r = 0;
+					int g = 0;
+					int b = 0;
+
+					// could optimize this with a rolling average ...
+
+					for (int yOffset = -radius; yOffset <= radius; ++yOffset)
+					{
+						int newY = mirror(y + yOffset, size.y);
+						auto py = img.getPixel(x, newY);
+						r += py.r;
+						g += py.g;
+						b += py.b;
+					}
+
+					r /= (2 * radius + 1);
+					g /= (2 * radius + 1);
+					b /= (2 * radius + 1);
+
+					newImg.setPixel(x, y, sf::Color(r, g, b));
+				}
+			}
+
+			img = newImg;
+		}
+
+		void test(sf::Image& img, int radius)
+		{
+			auto mirror = [](int in, int range)
+			{
+				if (in < 0) return -in;
+				else if (in >= range) return 2 * range - in;
+				return in;
+			};
+
+			auto size = img.getSize();
+
+			sf::Image newImg;
+			newImg.create(size.x, size.y);
+
+			for (int y = 0; y < size.y; ++y)
+			{
+				for (int x = 0; x < size.x; ++x)
+				{
+					newImg.setPixel(x, y, img.getPixel(x, mirror((int)(y + std::sin(time::appClock.getElapsedTime().asSeconds() * 2.f + x * 0.5f) * 2.f), size.y)));
+				}
+			}
+
+			img = newImg;
+		}
+
+		void add(sf::Image& base, sf::Image& overlay)
+		{
+			auto size = base.getSize();
+
+			for (int y = 0; y < size.y; ++y)
+			{
+				for (int x = 0; x < size.x; ++x)
+				{
+					auto basePixel = base.getPixel(x, y);
+					auto overlayPixel = overlay.getPixel(x, y);
+					sf::Color sum = basePixel + overlayPixel;
+					base.setPixel(x, y, sum);
+				}
+			}
 		}
 
 		void draw()
@@ -192,22 +324,27 @@ namespace sky
 			windowPtr->setView(windowView);
 			bufferPtr->setView(windowView);
 
-			// entity drawing
-			//windowPtr->draw(circle);
-			bufferPtr->draw(circle);
-
-			ImGui::Begin("Debug");
-			if (ImGui::CollapsingHeader("FPS"))
+			ImGui::Begin("Debug", 0, ImGuiWindowFlags_AlwaysAutoResize);
+			if (ImGui::CollapsingHeader("FPS", ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				ImGui::Text(fmt::format("[{:.2f}]", time::lerpFpsTrunc).c_str());
-				ImGui::PlotLines("", time::fpsHistory.data(), time::fpsHistoryLen, time::currentSampleIndex, 0, 30, 3.4028235E38F, ImVec2(ImGui::GetContentRegionAvail().x, 100));
+				ImGui::PlotLines("", time::fpsHistory.data(), time::fpsHistoryLen, time::currentSampleIndex, 0, 30, 3.4028235E38F, ImVec2(std::max(450.f, ImGui::GetContentRegionAvail().x), 100));
 			}
 			ImGui::End();
 			in::imgui();
 
+			// entity drawing
+			//windowPtr->draw(circle);
+			bufferPtr->draw(circle);
+			bufferPtr->draw(map);
+
 			// display to window
 			bufferPtr->display();
 			bufferSprite.setPosition(windowView.getCenter());
+			// dbg::log()->info(time::appClock.getElapsedTime().asSeconds());
+			// blur->setUniform("offsetFactor", sf::Vector2f(30.f, 30.f) * time::appClock.getElapsedTime().asSeconds());
+			// blur->setUniform("source", bufferSprite.getTexture());
+			// windowPtr->draw(bufferSprite, blur);
 			windowPtr->draw(bufferSprite);
 			ImGui::SFML::Render(*windowPtr);
 			windowPtr->display();
@@ -223,21 +360,98 @@ namespace sky
 			return windowView.getCenter();
 		}
 	}
-	namespace loop
+	namespace scene
 	{
+		// entire world
+		flecs::world world;
+
+		std::vector<lvl::room> rooms;
+
+		struct dummy
+		{
+			int a = 1;
+			int b = 2;
+		};
+
+		bool registeredTypes = false;
+		void registerTypes()
+		{
+			if (registeredTypes) return;
+			registeredTypes = true;
+
+			// i have no idea what this does ...
+			/*
+			world.component<std::string>()
+				.opaque(flecs::String) // Opaque type that maps to string
+				.serialize([](const flecs::serializer* s, const std::string* data) {
+				const char* str = data->c_str();
+				return s->value(flecs::String, &str); // Forward to serializer
+					})
+				.assign_string([](std::string* data, const char* value) {
+						*data = value; // Assign new value to std::string
+			});
+			*/
+
+			world.component<sf::Transformable>();
+			world.component<dummy>("dummy")
+				.member<int>("a")
+				.member<int>("b");
+		}
+
+		void snapshot()
+		{
+			std::string json(world.to_json().c_str());
+			dbg::log()->info(json);
+		}
+
+		// see https://github.com/SanderMertens/flecs/tree/master/examples/cpp/reflection/world_ser_deser/include/world_ser_deser 
+		namespace saveload
+		{
+			// Register components and systems in a module. This excludes them by default
+			// from the serialized data, and makes it easier to import across worlds.
+			struct move {
+				move(flecs::world& world) {
+					world.component<sf::Transformable>();
+						//.member<double>("x")
+						//.member<double>("y");
+				}
+			};
+		}
+
+		bool ss = false;
+		void start()
+		{
+
+		}
 		void update(sf::Time deltaTime)
 		{
+			if (!ss)
+			{
+				registerTypes();
+				world.entity()
+					.set([](dummy& dummy, sf::Transformable& t) {
+						dummy.a = 20;
+						dummy.b = 30;
+						t.setPosition(10, 10);
+					});
+				snapshot();
+				ss = true;
+			}
+
 			// Update ImGui
 			ImGui::SFML::Update(*render::windowPtr, time::deltaTime);
 
+			/*
+			// draw circle
 			circle.setFillColor(sf::Color::Transparent);
 			circle.setOutlineColor(sf::Color::White);
 			circle.setOutlineThickness(4);
 			circle.setOrigin(20, 20); // Move origin to center
 			circle.rotate(deltaTime.asSeconds() * 10.f);
 			circle.setPosition(render::pixelWidth / 2, render::pixelHeight / 2);
+			*/
 
-			render::setViewPosition(render::getViewPosition() + sf::Vector2f(deltaTime.asSeconds() * 100.f * in::getAxis(in::axis::horizontal), deltaTime.asSeconds() * -100.f * in::getAxis(in::axis::vertical)));
+			render::setViewPosition(render::getViewPosition() + sf::Vector2f(deltaTime.asSeconds() * 40.f * in::getAxis(in::axis::horizontal), deltaTime.asSeconds() * -30.f * in::getAxis(in::axis::vertical)));
 		}
 	}
 
@@ -248,6 +462,7 @@ namespace sky
 		dbg::init();
 		in::init();
 		render::init();
+		scene::start();
 
 		while (render::windowPtr->isOpen())
 		{
@@ -270,7 +485,7 @@ namespace sky
 			// reset deltaClock
 			time::deltaReset();
 			in::update(&(*render::windowPtr), render::scaleFactor);
-			loop::update(time::deltaTime);
+			scene::update(time::deltaTime);
 			render::draw();
 		}
 

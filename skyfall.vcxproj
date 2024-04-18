@@ -19,15 +19,19 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\game\Room.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\sky\AppMan.cpp" />
     <ClCompile Include="src\sky\Debug.cpp" />
     <ClCompile Include="src\sky\Input.cpp" />
+    <ClCompile Include="src\sky\Tilemap.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\game\Room.h" />
     <ClInclude Include="src\sky\AppMan.h" />
     <ClInclude Include="src\sky\Debug.h" />
     <ClInclude Include="src\sky\Input.h" />
+    <ClInclude Include="src\sky\Tilemap.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

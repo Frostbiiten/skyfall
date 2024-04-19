@@ -7,8 +7,6 @@ namespace sky
 	{
         bool tilemap::load()
 		{
-            mapWidth = mapHeight = 200;
-
             // load the tileset texture
             if (!tileset.loadFromFile("prototileset.png")) return false;
 

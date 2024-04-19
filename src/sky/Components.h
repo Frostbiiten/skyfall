@@ -9,7 +9,8 @@ namespace sky
 
 		struct position
 		{
-			sf::Vector2f vec;
+			float x;
+			float y;
 		};
 
 		struct velocity
@@ -20,8 +21,10 @@ namespace sky
 
 		struct boxBounds
 		{
-			sf::Vector2f dimensions;
-			sf::Vector2f offset;
+			float width;
+			float height;
+			float xOffset;
+			float yOffset;
 		};
 
 		struct drawbox { sf::Color color; };

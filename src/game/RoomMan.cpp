@@ -16,26 +16,34 @@ namespace sky
 	{
 		namespace man
 		{
-			namespace serialization
-			{
-				// Register components and systems in a module. This excludes them by default
-				// from the serialized data, and makes it easier to import across worlds.
-				struct move {
-					move(flecs::world& world) {
-						world.component<ecs::position>()
-							.member<float>("x")
-							.member<float>("y");
-
-						world.component<ecs::velocity>()
-							.member<float>("x")
-							.member<float>("y");
-					}
-				};
-			}
-
 			// ecs world
 			flecs::world world;
+			flecs::world world2Test;
 			constexpr bool monitorWorld = true;
+
+			// Register components and systems in a module
+			struct ecsRegistry
+			{
+				ecsRegistry(flecs::world& world)
+				{
+					// Register components
+					world.component<ecs::position>()
+						.member<float>("x")
+						.member<float>("y");
+
+					world.component<ecs::velocity>()
+						.member<float>("x")
+						.member<float>("y");
+
+					// Systems
+					world.system<ecs::position, const ecs::velocity>("Move")
+						.each([](flecs::entity e, ecs::position& p, const ecs::velocity& v) {
+						p.x += v.x;
+						p.y += v.y;
+						dbg::log()->info("{} moved to ({}, {})", e.path().c_str(), p.x, p.y);
+					});
+				}
+			};
 
 			// player
 			flecs::entity playerEntity;
@@ -47,16 +55,6 @@ namespace sky
 
 			void init()
 			{
-				// Monitor ecs statistics.
-				// See https://github.com/flecs-hub/explorer
-				if (monitorWorld)
-				{
-					world.set<flecs::Rest>({});
-					world.import<flecs::monitor>();
-				}
-
-				world.import<serialization::move>();
-
 				// Create initial rooms
 				{
 					rooms.reserve(reservedRooms);
@@ -66,26 +64,34 @@ namespace sky
 					changeRoom(0);
 				}
 
-				// Create entities
-				// can this be serialized?
+				// Monitor ecs statistics.
+				// See https://github.com/flecs-hub/explorer
+				if (monitorWorld)
+				{
+					world.set<flecs::Rest>({});
+					world.import<flecs::monitor>();
+				}
+
+				// Register ecs
+				world.import<ecsRegistry>();
+
+				// Create entity in first world
 				playerEntity = world.entity("player").set([](ecs::position& p, ecs::velocity& v) {
-					p.vec = sf::Vector2f{5, 9};
+					p = { 5, 9 };
 					v = { 1, 3 };
 				});
+				world.progress();
 
-				// Create systems
-
-				// Systems
-				flecs::system sys =
-					world.system<ecs::position, const ecs::velocity>("Move")
-					.each([](ecs::position& p, const ecs::velocity& v)
-				{
-					p.vec.x += v.x;
-					p.vec.y += v.y;
-				});
+				// Create second world, import same module
+				flecs::world world_b;
+				world_b.import<ecsRegistry>();
 
 				// Serialize world to JSON
 				auto json = world.to_json();
+				sky::dbg::log()->info(json.c_str());
+
+				// Deserialize JSON into second world
+				world_b.from_json(json);
 				sky::dbg::log()->info(json.c_str());
 			}
 
@@ -95,7 +101,7 @@ namespace sky
 				sf::Vector2f newCamCenter(rooms[currentRoom].getWidth() / 2.f, rooms[currentRoom].getHeight() / 2.f);
 				sky::cam::lerpCenter(newCamCenter, 10.f, deltaTime);
 
-				world.progress();
+				//world.progress();
 			}
 
 			void draw(sf::RenderTarget& target)

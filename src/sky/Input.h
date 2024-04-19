@@ -12,7 +12,7 @@ namespace sky
 		};
 
 		void init();
-		void update(sf::RenderWindow* windowPtr, int scaleFactor = 1);
+		void step(sf::RenderWindow* windowPtr, int scaleFactor = 1);
 		void imgui();
 		void processEvent(sf::Event event);
 

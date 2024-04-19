@@ -16,7 +16,7 @@ namespace sky
 
 		public:
 			room(std::size_t id, std::size_t width, std::size_t height);
-			void update();
+			void step();
 			void draw(sf::RenderTarget& target);
 
 			std::size_t getWidth();

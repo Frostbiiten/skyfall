@@ -202,11 +202,16 @@ namespace sky
 			bufferSprite.setOrigin(pixelWidth / 2.f, pixelHeight / 2.f);
 		}
 
-		void draw()
+		void clear()
 		{
-			// clear & set views
 			windowPtr->clear(sf::Color(0, 0, 0, 255));
 			bufferPtr->clear(sf::Color(0, 0, 0, 255));
+		}
+
+		void draw()
+		{
+			// update camera position right before drawing
+			setViewPosition(cam::getCenter()); // TODO: move this to roomman
 			windowPtr->setView(windowView);
 			bufferPtr->setView(windowView);
 
@@ -219,13 +224,10 @@ namespace sky
 			ImGui::End();
 			in::imgui();
 
-			// update camera position right before drawing
-			setViewPosition(cam::getCenter());
-
 			// entity drawing
 			//windowPtr->draw(circle);
 			//bufferPtr->draw(map);
-			lvl::man::draw(*render::bufferPtr);
+			// lvl::man::draw(*render::bufferPtr);
 
 			// display to window
 			bufferPtr->display();
@@ -239,14 +241,14 @@ namespace sky
 	{
 		void start()
 		{
-			lvl::man::init();
+			lvl::man::init(*render::bufferPtr);
 		}
 
-		void update(sf::Time deltaTime)
+		void step(sf::Time deltaTime)
 		{
 			// Update ImGui & Camera Position
 			ImGui::SFML::Update(*render::windowPtr, time::deltaTime);
-			lvl::man::update(deltaTime.asSeconds());
+			lvl::man::step(deltaTime.asSeconds());
 			//render::setViewPosition(render::getViewPosition() + sf::Vector2f(deltaTime.asSeconds() * 70.f * in::getAxis(in::axis::horizontal), deltaTime.asSeconds() * -70.f * in::getAxis(in::axis::vertical)));
 			//render::setViewPosition(render::getViewPosition() + sf::Vector2f(deltaTime.asSeconds() * 70.f * in::getAxis(in::axis::horizontal), deltaTime.asSeconds() * -70.f * in::getAxis(in::axis::vertical)));
 		}
@@ -281,8 +283,9 @@ namespace sky
 
 			// reset deltaClock
 			time::deltaReset();
-			in::update(&(*render::windowPtr), render::scaleFactor);
-			scene::update(time::deltaTime);
+			in::step(&(*render::windowPtr), render::scaleFactor);
+			render::clear();
+			scene::step(time::deltaTime);
 			render::draw();
 		}
 

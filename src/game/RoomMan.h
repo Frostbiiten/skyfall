@@ -7,8 +7,8 @@ namespace sky
 	{
 		namespace man
 		{
-			void init();
-			void update(float deltaTime);
+			void init(sf::RenderTarget& target);
+			void step(float deltaTime);
 			void draw(sf::RenderTarget& target);
 
 			bool changeRoom(std::size_t newRoom);

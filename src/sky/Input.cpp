@@ -68,7 +68,7 @@ namespace sky
 				for (auto key : binding.negative) quickBindings[key].push_back([&binding](bool pressed) { binding.setNeg(pressed); });
 			}
 		}
-		void update(sf::RenderWindow* windowPtr, int scaleFactor)
+		void step(sf::RenderWindow* windowPtr, int scaleFactor)
 		{
 			pointerPosition = sf::Mouse::getPosition(*windowPtr);
 			pointerPosition.x /= scaleFactor;

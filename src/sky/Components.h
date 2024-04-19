@@ -3,23 +3,21 @@
 
 namespace sky
 {
-	namespace ecs
+	namespace cmp
 	{
 		// COMPONENTS SHOULD ONLY BE DATA
 
 		struct position
 		{
-			float x;
-			float y;
+			float x, y;
 		};
 
 		struct velocity
 		{
-			float x;
-			float y;
+			float x, y;
 		};
 
-		struct boxBounds
+		struct rectBounds
 		{
 			float width;
 			float height;
@@ -27,6 +25,9 @@ namespace sky
 			float yOffset;
 		};
 
-		struct drawbox { sf::Color color; };
+		struct drawBounds { sf::Color color; int thickness = 1; };
+
+		// Game
+		struct dmg { float dmg; };
 	}
 }

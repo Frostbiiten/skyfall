@@ -15,7 +15,7 @@ namespace sky
 			map.load();
 		}
 
-		void room::update()
+		void room::step()
 		{
 
 		}

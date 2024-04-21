@@ -241,14 +241,14 @@ namespace sky
 	{
 		void start()
 		{
-			lvl::man::init(*render::bufferPtr);
+			man::init(*render::bufferPtr);
 		}
 
 		void step(sf::Time deltaTime)
 		{
 			// Update ImGui & Camera Position
 			ImGui::SFML::Update(*render::windowPtr, time::deltaTime);
-			lvl::man::step(deltaTime.asSeconds());
+			man::step(deltaTime.asSeconds());
 			//render::setViewPosition(render::getViewPosition() + sf::Vector2f(deltaTime.asSeconds() * 70.f * in::getAxis(in::axis::horizontal), deltaTime.asSeconds() * -70.f * in::getAxis(in::axis::vertical)));
 			//render::setViewPosition(render::getViewPosition() + sf::Vector2f(deltaTime.asSeconds() * 70.f * in::getAxis(in::axis::horizontal), deltaTime.asSeconds() * -70.f * in::getAxis(in::axis::vertical)));
 		}

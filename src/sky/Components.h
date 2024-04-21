@@ -3,7 +3,7 @@
 
 namespace sky
 {
-	namespace cmp
+	namespace com
 	{
 		// COMPONENTS SHOULD ONLY BE DATA
 
@@ -25,7 +25,9 @@ namespace sky
 			float yOffset;
 		};
 
-		struct drawBounds { sf::Color color; int thickness = 1; };
+		struct drawBounds { sf::Color color; float thickness = 1.f; };
+		struct loading {};
+
 
 		// Game
 		struct dmg { float dmg; };

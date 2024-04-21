@@ -24,9 +24,11 @@
     <ClCompile Include="src\game\RoomMan.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\sky\AppMan.cpp" />
+    <ClCompile Include="src\sky\AssetMan.cpp" />
     <ClCompile Include="src\sky\Camera.cpp" />
     <ClCompile Include="src\sky\Debug.cpp" />
     <ClCompile Include="src\sky\Input.cpp" />
+    <ClCompile Include="src\sky\ResourceMan.cpp" />
     <ClCompile Include="src\sky\Tilemap.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -34,10 +36,12 @@
     <ClInclude Include="src\game\Room.h" />
     <ClInclude Include="src\game\RoomMan.h" />
     <ClInclude Include="src\sky\AppMan.h" />
+    <ClInclude Include="src\sky\AssetMan.h" />
     <ClInclude Include="src\sky\Camera.h" />
     <ClInclude Include="src\sky\Components.h" />
     <ClInclude Include="src\sky\Debug.h" />
     <ClInclude Include="src\sky\Input.h" />
+    <ClInclude Include="src\sky\ResourceMan.h" />
     <ClInclude Include="src\sky\Tilemap.h" />
     <ClInclude Include="src\sky\Util.h" />
   </ItemGroup>

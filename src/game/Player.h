@@ -3,7 +3,7 @@
 
 namespace sky
 {
-	namespace cmp
+	namespace com
 	{
 	}
 }

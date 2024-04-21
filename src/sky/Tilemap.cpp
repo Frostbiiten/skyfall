@@ -1,73 +1,83 @@
 #include <sky/Tilemap.h>
 #include <sky/Debug.h>
+#include <sky/ResourceMan.h>
 
 namespace sky
 {
 	namespace lvl
 	{
-        bool tilemap::load()
+		bool registerTileset(tileset& ts)
 		{
-            // load the tileset texture
-            if (!tileset.loadFromFile("prototileset.png")) return false;
+			// TODO: tileset should be read from a file
+			// TODO: get assetman back to do this ^ ^
+			dbg::log()->warn("Implement assetman for file tilset loading. [non-default]");
+			if ((ts.textureId = res::textures().getId(fmt::format("game/tileset/{}/img.png", ts.name))) == -1) return false;
 
-            // resize the vertex array to fit the level size
-            verts.setPrimitiveType(sf::Quads);
-            verts.resize(mapWidth * mapHeight * 4);
+			int uniqueTiles = 20;
+			ts.definitions.resize(uniqueTiles);
 
-            dbg::log()->info("Loading tilemap");
-            dbg::log()->info("{}", verts.getVertexCount());
-
-            std::size_t currentTile = 0;
-
-            // quad per tile
-			for (std::size_t y = 0; y < mapHeight; ++y)
+			for (std::size_t i = 0; i < ts.definitions.size(); ++i)
 			{
-				for (std::size_t x = 0; x < mapWidth; ++x)
-				{
-                    mapTiles[currentTile] = currentTile % tileDefs.size();
+				ts.definitions[i].offset = i;
+			}
 
-                    // get the current tile number
-                    std::size_t tileID = mapTiles[currentTile];
-                    tile tileData = tileDefs[tileID];
-
-                    // ptr to current tile quad
-                    sf::Vertex* quad = &verts[currentTile * 4];
-
-                    // quad vert positions
-                    quad[0].position = sf::Vector2f(x * tileWidth, y * tileHeight);
-                    quad[1].position = sf::Vector2f((x + 1) * tileWidth, y * tileHeight);
-                    quad[2].position = sf::Vector2f((x + 1) * tileWidth, (y + 1) * tileHeight);
-                    quad[3].position = sf::Vector2f(x * tileWidth, (y + 1) * tileHeight);
-
-                    // quad uv positions
-                    std::size_t ty = tileData.offset / mapWidth;
-                    std::size_t tx = tileData.offset- (ty * mapWidth);
-
-                    quad[0].texCoords = sf::Vector2f(tx * tileWidth, ty * tileHeight);
-                    quad[1].texCoords = sf::Vector2f((tx + 1) * tileWidth, ty * tileHeight);
-                    quad[2].texCoords = sf::Vector2f((tx + 1) * tileWidth, (ty + 1) * tileHeight);
-                    quad[3].texCoords = sf::Vector2f(tx * tileWidth, (ty + 1) * tileHeight);
-
-                    ++currentTile;
-                }
-            }
-
-            return true;
+			return true;
 		}
 
-		void tilemap::draw(sf::RenderTarget& target, sf::RenderStates states) const
+		bool registerTilemap(tilemap& tm, const tileset& ts)
 		{
-            // TODO: implement culling (draw has start/end for contiguous areas)
-            // perhaps split into chunks in non-major axis
+			tm.mapTiles.resize(tm.mapWidth * tm.mapHeight);
 
-			// apply transform
-			states.transform *= getTransform();
+			// resize the vertex array to fit the level size
+			std::size_t vertCount = tm.mapWidth * tm.mapHeight * 4;
+			if (tm.buffered) tm.buf.create(vertCount);
+			tm.verts.resize(vertCount);
 
-			// apply tileset texture
-			states.texture = &tileset;
+			dbg::log()->info("Loading tilemap: {} vertices", tm.verts.size());
 
-			// draw vertex array
-			target.draw(verts, states);
+			// quad per tile
+			std::size_t currentTile = 0;
+			for (std::size_t y = 0; y < tm.mapHeight; ++y)
+			{
+				for (std::size_t x = 0; x < tm.mapWidth; ++x)
+				{
+					// dbg::log()->warn("TEMPORARY: FOR TESTING");
+					tm.mapTiles[currentTile] = currentTile % ts.definitions.size();
+
+					// get the current tile number
+					std::size_t tileID = tm.mapTiles[currentTile];
+					tile tileData = ts.definitions[tileID];
+
+					// ptr to current tile quad
+					sf::Vertex* quad = &tm.verts[currentTile * 4];
+
+					// quad vert positions
+					quad[0].position = sf::Vector2f(x * ts.tileWidth, y * ts.tileHeight);
+					quad[1].position = sf::Vector2f((x + 1) * ts.tileWidth, y * ts.tileHeight);
+					quad[2].position = sf::Vector2f((x + 1) * ts.tileWidth, (y + 1) * ts.tileHeight);
+					quad[3].position = sf::Vector2f(x * ts.tileWidth, (y + 1) * ts.tileHeight);
+
+					// quad uv positions
+					std::size_t ty = tileData.offset / tm.mapWidth;
+					std::size_t tx = tileData.offset - (ty * tm.mapWidth);
+
+					quad[0].texCoords = sf::Vector2f(tx * ts.tileWidth, ty * ts.tileHeight);
+					quad[1].texCoords = sf::Vector2f((tx + 1) * ts.tileWidth, ty * ts.tileHeight);
+					quad[2].texCoords = sf::Vector2f((tx + 1) * ts.tileWidth, (ty + 1) * ts.tileHeight);
+					quad[3].texCoords = sf::Vector2f(tx * ts.tileWidth, (ty + 1) * ts.tileHeight);
+
+					++currentTile;
+				}
+			}
+
+			// apply to buffer
+			if (tm.buffered)
+			{
+				tm.buf.update(&tm.verts[0], vertCount, 0);
+				// tm.verts.clear();
+			}
+
+			return true;
 		}
 	}
 }

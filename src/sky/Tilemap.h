@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <SFML/Graphics.hpp>
+#include <flecs.h>
 
 namespace sky
 {
@@ -9,42 +10,47 @@ namespace sky
 	{
 		struct tile
 		{
-			int offset;
-
-			// perhaps add flags
+			// offset is counter on a row-major basis
+			std::size_t offset;
 		};
 
-		class tilemap : public sf::Drawable, public sf::Transformable
+		struct tilemapRenderer
 		{
-			// data
-			std::vector<tile> tileDefs;
-			std::vector<std::size_t> mapTiles;
-			
-			// properties
+
+		};
+
+		// Tilesets contain a defined set of tiles in no particular arrangement
+		struct tileset
+		{
+			std::string name;
+			std::vector<tile> definitions;
 			std::size_t tileWidth, tileHeight;
+			std::size_t textureId = 0;
+		};
+
+		struct tilemap
+		{
+			// layout
+			std::vector<std::size_t> mapTiles;
+
+			// properties
 			std::size_t mapWidth, mapHeight;
 
 			// drawing
-			sf::Texture tileset;
-			sf::VertexArray verts;
+			std::vector<sf::Vertex> verts;
 
-			virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;
+			// use vertex buffer when tilemap remains unchanged over frames
+			// saves time by storing data on gpu instead of copying every frame
+			bool buffered = false;
+			sf::VertexBuffer buf;
 
-		public:
-			tilemap(std::size_t tileWidth, std::size_t tileHeight, std::size_t mapWidth, std::size_t mapHeight, std::size_t uniqueTiles)
-				: tileWidth(tileWidth), tileHeight(tileHeight),
-				mapWidth(mapWidth), mapHeight(mapHeight)
-			{
-				mapTiles.resize(mapWidth * mapHeight);
-				tileDefs.resize(uniqueTiles);
-
-				for (std::size_t i = 0; i < tileDefs.size(); ++i)
-				{
-					tileDefs[i].offset = i;
-				}
-			}
-
-			bool load();
+			// tileset ref
+			flecs::entity tileset;
 		};
+
+		bool registerTileset(tileset& ts);
+
+		// Registers a tilemap for drawing (similiar to init)
+		bool registerTilemap(tilemap& tm, const tileset& ts);
 	}
 }

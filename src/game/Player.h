@@ -5,5 +5,6 @@ namespace sky
 {
 	namespace com
 	{
+		struct player {};
 	}
 }

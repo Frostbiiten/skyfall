@@ -167,11 +167,15 @@ namespace sky
 		std::unique_ptr<sf::RenderTexture> bufferPtr;
 		sf::Sprite bufferSprite;
 		sf::Image cpuBuffer;
+
 		sf::View windowView;
+		const sf::View bufferRenderView {sf::Vector2f(0, 0), sf::Vector2f(pixelWidth, pixelHeight)};
 
 		void setViewPosition(sf::Vector2f position)
 		{
 			windowView.setCenter(position);
+			// windowView.setSize(sf::Vector2f(pixelWidth, pixelHeight) * (1.f + time::appClock.getElapsedTime().asSeconds() * 0.01f));
+			// windowView.setRotation(std::sin(time::appClock.getElapsedTime().asSeconds() * 0.5f) * 180.f);
 		}
 
 		sf::Vector2f getViewPosition()
@@ -231,8 +235,13 @@ namespace sky
 
 			// display to window
 			bufferPtr->display();
-			bufferSprite.setPosition(windowView.getCenter());
-			windowPtr->draw(bufferSprite);
+			// Render Buffer
+			{
+				sf::View prevView = windowPtr->getView();
+				windowPtr->setView(bufferRenderView);
+				windowPtr->draw(bufferSprite);
+				windowPtr->setView(prevView);
+			}
 			ImGui::SFML::Render(*windowPtr);
 			windowPtr->display();
 		}

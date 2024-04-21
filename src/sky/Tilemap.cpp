@@ -9,8 +9,7 @@ namespace sky
 		bool registerTileset(tileset& ts)
 		{
 			// TODO: tileset should be read from a file
-			// TODO: get assetman back to do this ^ ^
-			dbg::log()->warn("Implement assetman for file tilset loading. [non-default]");
+			dbg::log()->warn("Implement assetman for file tileset loading. [non-default]");
 			if ((ts.textureId = res::textures().getId(fmt::format("game/tileset/{}/img.png", ts.name))) == -1) return false;
 
 			int uniqueTiles = 20;
@@ -30,7 +29,11 @@ namespace sky
 
 			// resize the vertex array to fit the level size
 			std::size_t vertCount = tm.mapWidth * tm.mapHeight * 4;
-			if (tm.buffered) tm.buf.create(vertCount);
+			if (tm.buffered)
+			{
+				tm.buf.create(vertCount);
+				tm.buf.setPrimitiveType(sf::Quads);
+			}
 			tm.verts.resize(vertCount);
 
 			dbg::log()->info("Loading tilemap: {} vertices", tm.verts.size());
@@ -74,7 +77,9 @@ namespace sky
 			if (tm.buffered)
 			{
 				tm.buf.update(&tm.verts[0], vertCount, 0);
-				// tm.verts.clear();
+				tm.verts.clear();
+				std::vector<sf::Vertex> emp;
+				tm.verts.swap(emp);
 			}
 
 			return true;

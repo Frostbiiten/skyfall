@@ -12,4 +12,8 @@ namespace sky
 		// DOUBLE CHECK ON THIS WHEN THE CAMERA STARTS MOVING AROUND
 		void lerpCenter(sf::Vector2f center, float step, float deltaTime);
 	}
+
+	struct camera
+	{
+	};
 }

@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\Phases">
+      <UniqueIdentifier>{9c6b8c42-40ba-4414-8bc6-98061c5b3b1e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -85,6 +88,36 @@
     </ClInclude>
     <ClInclude Include="src\sky\ResourceMan.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\TypeRegistry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\Phases\OnLoad.h">
+      <Filter>Header Files\Phases</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\Phases\Start.h">
+      <Filter>Header Files\Phases</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\Phases\PostLoad.h">
+      <Filter>Header Files\Phases</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\Phases\PreUpdate.h">
+      <Filter>Header Files\Phases</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\Phases\OnUpdate.h">
+      <Filter>Header Files\Phases</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\Phases\OnValidate.h">
+      <Filter>Header Files\Phases</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\Phases\PostUpdate.h">
+      <Filter>Header Files\Phases</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\Phases\OnStore.h">
+      <Filter>Header Files\Phases</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game\Phases\PreStore.h">
+      <Filter>Header Files\Phases</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

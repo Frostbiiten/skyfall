@@ -32,9 +32,19 @@
     <ClCompile Include="src\sky\Tilemap.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\game\Phases\OnLoad.h" />
+    <ClInclude Include="src\game\Phases\OnStore.h" />
+    <ClInclude Include="src\game\Phases\OnUpdate.h" />
+    <ClInclude Include="src\game\Phases\OnValidate.h" />
+    <ClInclude Include="src\game\Phases\PostLoad.h" />
+    <ClInclude Include="src\game\Phases\PostUpdate.h" />
+    <ClInclude Include="src\game\Phases\PreStore.h" />
+    <ClInclude Include="src\game\Phases\PreUpdate.h" />
+    <ClInclude Include="src\game\Phases\Start.h" />
     <ClInclude Include="src\game\Player.h" />
     <ClInclude Include="src\game\Room.h" />
     <ClInclude Include="src\game\RoomMan.h" />
+    <ClInclude Include="src\game\TypeRegistry.h" />
     <ClInclude Include="src\sky\AppMan.h" />
     <ClInclude Include="src\sky\AssetMan.h" />
     <ClInclude Include="src\sky\Camera.h" />

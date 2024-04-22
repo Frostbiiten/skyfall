@@ -1,6 +1,5 @@
 #include <game/room.h>
 
-
 namespace sky
 {
 	namespace lvl

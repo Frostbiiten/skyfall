@@ -23,19 +23,18 @@ namespace sky
 			return true;
 		}
 
-		bool registerTilemap(tilemap& tm, const tileset& ts)
+		void registerTilemap(tilemap& tm, const tileset& ts)
 		{
 			tm.mapTiles.resize(tm.mapWidth * tm.mapHeight);
 
 			// resize the vertex array to fit the level size
 			std::size_t vertCount = tm.mapWidth * tm.mapHeight * 4;
-			if (tm.buffered)
-			{
-				tm.buf.create(vertCount);
-				tm.buf.setPrimitiveType(sf::Quads);
-			}
 			tm.verts.resize(vertCount);
+		}
 
+		bool regenerateMesh(tilemap& tm, const tileset& ts)
+		{
+			std::size_t vertCount = tm.mapWidth * tm.mapHeight * 4;
 			dbg::log()->info("Loading tilemap: {} vertices", tm.verts.size());
 
 			// quad per tile
@@ -44,9 +43,6 @@ namespace sky
 			{
 				for (std::size_t x = 0; x < tm.mapWidth; ++x)
 				{
-					// dbg::log()->warn("TEMPORARY: FOR TESTING");
-					tm.mapTiles[currentTile] = currentTile % ts.definitions.size();
-
 					// get the current tile number
 					std::size_t tileID = tm.mapTiles[currentTile];
 					tile tileData = ts.definitions[tileID];
@@ -76,10 +72,15 @@ namespace sky
 			// apply to buffer
 			if (tm.buffered)
 			{
+				tm.buf.create(vertCount);
+				tm.buf.setPrimitiveType(sf::Quads);
 				tm.buf.update(&tm.verts[0], vertCount, 0);
+
+				/*
 				tm.verts.clear();
 				std::vector<sf::Vertex> emp;
 				tm.verts.swap(emp);
+				*/
 			}
 
 			return true;

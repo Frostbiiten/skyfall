@@ -42,15 +42,20 @@ namespace sky
 			// use vertex buffer when tilemap remains unchanged over frames
 			// saves time by storing data on gpu instead of copying every frame
 			bool buffered = false;
-			sf::VertexBuffer buf;
 
 			// tileset ref
 			flecs::entity tileset;
+
+			// non-serialized
+			sf::VertexBuffer buf;
 		};
 
 		bool registerTileset(tileset& ts);
 
 		// Registers a tilemap for drawing (similiar to init)
-		bool registerTilemap(tilemap& tm, const tileset& ts);
+		void registerTilemap(tilemap& tm, const tileset& ts);
+		
+		// Registers a tilemap for drawing (similiar to init)
+		bool regenerateMesh(tilemap& tm, const tileset& ts);
 	}
 }

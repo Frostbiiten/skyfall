@@ -17,6 +17,11 @@ namespace sky
 			float x, y;
 		};
 
+		struct teleport
+		{
+			float x, y;
+		};
+
 		struct rectBounds
 		{
 			float width;

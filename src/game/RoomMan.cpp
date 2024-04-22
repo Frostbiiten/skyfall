@@ -1,6 +1,10 @@
 // std
 #include <vector>
 
+// rand
+#include <effolkronium/random.hpp>
+using random = effolkronium::random_static;
+
 // Flecs
 #include <flecs.h>
 
@@ -8,12 +12,13 @@
 #include <sky/Camera.h>
 #include <sky/Components.h>
 #include <sky/ResourceMan.h>
+#include <sky/Tilemap.h>
+#include <sky/Input.h>
 #include <sky/Debug.h>
 
 // GAME
 #include <game/RoomMan.h>
 #include <game/Player.h>
-#include <sky/Tilemap.h>
 #include <game/Room.h>
 #include <imgui.h>
 
@@ -28,6 +33,9 @@ namespace sky
 		// ecs world
 		flecs::world world;
 		constexpr bool monitorWorld = true;
+
+		// player
+		flecs::entity player;
 
 		// TODO: ensure this works/find another solution with multithreading...
 		sf::RectangleShape rectBoundsSurrogate;
@@ -83,6 +91,10 @@ namespace sky
 						.member<float>("x")
 						.member<float>("y");
 
+					world.component<com::teleport>()
+						.member<float>("x")
+						.member<float>("y");
+
 					world.component<com::velocity>()
 						.member<float>("x")
 						.member<float>("y");
@@ -110,7 +122,7 @@ namespace sky
 
 					world.component<com::drawBounds>()
 						.member<sf::Color>("color")
-						.member<int>("thickness");
+						.member<float>("thickness");
 
 					world.component<lvl::tile>()
 						.member(flecs::U64, "offset");
@@ -121,9 +133,16 @@ namespace sky
 					world.component<lvl::tileset>()
 						.member<std::string>("name")
 						.member<std::vector<lvl::tile>>("definitions")
-						.member(flecs::U64, "tile width")
-						.member(flecs::U64, "tile height")
-						.member(flecs::U64, "texture Id");
+						.member(flecs::U64, "tile_width")
+						.member(flecs::U64, "tile_height")
+						.member(flecs::U64, "texture_Id");
+
+					world.component<lvl::room>()
+						.member(flecs::U64, "id")
+						.member(flecs::U64, "width")
+						.member(flecs::U64, "height")
+						.member<sf::Vector2f>("cameraPadding")
+						.member<flecs::entity>("tilemap");
 
 					world.component<std::vector<sf::Vertex>>()
 						.opaque(std_vector_support<sf::Vertex>);
@@ -133,10 +152,17 @@ namespace sky
 
 					world.component<lvl::tilemap>()
 						.member<std::vector<flecs::u64_t>>("tiles")
-						.member(flecs::U64, "map width")
-						.member(flecs::U64, "map height")
+						.member(flecs::U64, "map_width")
+						.member(flecs::U64, "map_height")
 						.member<std::vector<sf::Vertex>>("vertarray")
-						.member<bool>("buffered");
+						.member<bool>("buffered")
+						.member<flecs::entity>("tileset");
+
+					world.component<com::player>()
+						.member<float>("speed")
+						.member<float>("camera_lookahead")
+						.member<float>("max_camera_lookahead")
+						.member<sf::Vector2f>("camera_rect");
 				}
 			};
 
@@ -151,17 +177,42 @@ namespace sky
 			{
 				onload(flecs::world & world)
 				{
-					auto loadTilesets = world.system<lvl::tileset, com::loading>("Load Tilesets").kind(flecs::OnLoad)
-						.each([](flecs::entity e, lvl::tileset & ts, com::loading l)
+					auto loadRooms = world.system<lvl::room, com::loading>("Load Rooms").kind(flecs::OnLoad)
+						.each([&](flecs::entity e, lvl::room & room, com::loading)
 					{
-						lvl::registerTileset(ts);
+						// Create basic tileset
+						auto ts1 = world.entity("ts1").set([](lvl::tileset & ts)
+						{
+							ts.name = "proto";
+							ts.tileWidth = 16;
+							ts.tileHeight = 16;
+						}).add<com::loading>();
+
+						// Create tilemap
+						auto tm1 = world.entity("tm1").set([&](lvl::tilemap & tm, com::position & p)
+						{
+							tm.tileset = ts1; // NEED THIS
+							lvl::generateRoom(room, tm, *ts1.get<lvl::tileset>());
+						}).add<com::loading>();
+
+						// Move camera to center of room
+						sf::Vector2f roomCenter { room.width * 8.f, room.height * 8.f };
+						cam::setCenter(roomCenter);
+
 						e.remove<com::loading>();
 					});
 
-					auto loadTilemaps = world.system<lvl::tilemap, com::loading>("Load Tilemaps").kind(flecs::OnLoad)
-						.each([](flecs::entity e, lvl::tilemap & tm, com::loading l)
+					auto loadTilesets = world.system<lvl::tileset, com::loading>("Load Tilesets").kind(flecs::OnLoad)
+						.each([](flecs::entity e, lvl::tileset & ts, com::loading)
 					{
-						lvl::registerTilemap(tm, *tm.tileset.get<lvl::tileset>());
+						lvl::registerTileset(ts);
+						e.remove<com::loading>();
+					}).depends_on(loadRooms);
+
+					auto tilemapMeshgen = world.system<lvl::tilemap, com::loading>("Load Tilemaps").kind(flecs::OnLoad)
+						.each([](flecs::entity e, lvl::tilemap & tm, com::loading)
+					{
+						lvl::regenerateMesh(tm, *tm.tileset.get<lvl::tileset>());
 						e.remove<com::loading>();
 					}).depends_on(loadTilesets);
 				}
@@ -176,6 +227,12 @@ namespace sky
 			{
 				preupdate(flecs::world & world)
 				{
+					auto updatePlayerVelocity = world.system<com::player, com::position, com::velocity&>("Update Player Velocity").kind(flecs::PreUpdate)
+						.each([&](flecs::entity, com::player player, com::position p, com::velocity& v)
+					{
+						v.x = in::getAxis(in::axis::horizontal) * player.speed;
+						v.y = -in::getAxis(in::axis::vertical) * player.speed;
+					});
 				}
 			};
 			struct onupdate
@@ -187,6 +244,14 @@ namespace sky
 					{
 						p.x += v.x * it.delta_time();
 						p.y += v.y * it.delta_time();
+					});
+
+					auto teleport = world.system<com::position, const com::teleport>("Teleport").kind(flecs::OnUpdate)
+						.each([](flecs::entity e, com::position & p, const com::teleport& tp)
+					{
+						p.x = tp.x;
+						p.y = tp.y;
+						e.remove<com::teleport>();
 					});
 				}
 			};
@@ -206,10 +271,31 @@ namespace sky
 			{
 				prestore(flecs::world & world)
 				{
-					auto moveCamera = world.system<com::player, com::position>("Move Camera").kind(flecs::PreStore)
-						.each([&](flecs::iter & it, size_t, com::player, com::position p)
+					auto moveCamera = world.system<com::player, com::position, com::velocity&>("Move Camera").kind(flecs::PreStore)
+						.each([&](flecs::iter & it, size_t, com::player player, com::position p, com::velocity v)
 					{
-						cam::lerpCenter(sf::Vector2f(p.x, p.y), 3.f, it.delta_time());
+						float targetX = p.x + std::clamp(v.x * player.cameraLookahead, -player.maxCameraLookahead, player.maxCameraLookahead);
+						float targetY = p.y + std::clamp(v.y * player.cameraLookahead, -player.maxCameraLookahead, player.maxCameraLookahead);
+
+						sf::Vector2f camPos = cam::getCenter();
+
+						float xDiff = targetX - camPos.x; 
+						if (xDiff > player.cameraRect.x) camPos.x += (xDiff - player.cameraRect.x);
+						if (xDiff < -player.cameraRect.x) camPos.x += (xDiff + player.cameraRect.x);
+
+						float yDiff = targetY - camPos.y; 
+						if (yDiff > player.cameraRect.y) camPos.y += (yDiff - player.cameraRect.y);
+						if (yDiff < -player.cameraRect.y) camPos.y += (yDiff + player.cameraRect.y);
+
+						cam::lerpCenter(camPos, 10.5f, it.delta_time());
+					});
+
+					auto clampCamera = world.system<lvl::room>("Room Clamp Camera").kind(flecs::PreStore)
+						.each([&](lvl::room room)
+					{
+						float cameraX = std::max(std::min(cam::getCenter().x, room.width * 16 + room.cameraPadding.x), -room.cameraPadding.x);
+						float cameraY = std::max(std::min(cam::getCenter().y, room.height * 16 + room.cameraPadding.y), -room.cameraPadding.y);
+						cam::setCenter(sf::Vector2f(cameraX, cameraY));
 					});
 				}
 			};
@@ -233,6 +319,16 @@ namespace sky
 								renderTarget->draw(&tm.verts[0], tm.verts.size(), sf::Quads, rs);
 							}
 						}
+
+						// temp: attempt reload if no verts
+						if (tm.buffered)
+						{
+							if (tm.buf.getVertexCount() == 0) e.add<com::loading>();
+						}
+						else if (tm.verts.size() == 0)
+						{
+							e.add<com::loading>();
+						}
 						// dbg::log()->error("Implement resource manager to draw textures properly");
 						// rs.texture
 					});
@@ -247,18 +343,6 @@ namespace sky
 						rectBoundsSurrogate.setOutlineThickness(b.thickness);
 
 						renderTarget->draw(rectBoundsSurrogate);
-
-
-						ImGui::Begin("Debug");
-
-						if (ImGui::Button("Dump Scene"))
-						{
-							auto json = world.to_json();
-							file::writeFile("dump.json", json.c_str());
-							dbg::log()->info(json.c_str());
-						}
-
-						ImGui::End();
 					});
 				}
 			};
@@ -296,9 +380,6 @@ namespace sky
 			}
 		};
 
-		// player
-		flecs::entity player;
-
 		void init(sf::RenderTarget& target)
 		{
 			renderTarget = &target;
@@ -314,23 +395,9 @@ namespace sky
 			// Register ecs components/systems
 			world.import<ecsRegistry>();
 
-			// Create entity in first world
 			// Should I use a prefab ??
-			player = world.entity("player").set([]
-			(
-				com::position& p,
-				com::velocity& v,
-				com::rectBounds& bounds,
-				com::drawBounds & db
-				)
-			{
-				//p = { rooms[currentRoom].getWidth() / 2.f, rooms[currentRoom].getHeight() / 2.f };
-				p = { 0, 0 };
-				v = { 30, 20 };
-				bounds = { .width{12}, .height{24}, .xOffset{-6}, .yOffset{-6} };
-				db = { .color{sf::Color::Red}, .thickness = 1 };
-			}).add<com::loading>().add<com::player>();
 
+			/*
 			// Create basic tileset
 			auto ts1 = world.entity("ts1").set([](lvl::tileset & ts)
 			{
@@ -348,11 +415,73 @@ namespace sky
 				tm.tileset = ts1;
 				tm.buffered = true;
 			}).add<com::loading>();
+			//*/
+
+			int roomWidth = random::get(18, 24);
+			int roomHeight = random::get(9, 15);
+
+			// Create initial room
+			/**/
+			auto currentRoom = world.entity("Current Room").set([&](lvl::room & room)
+			{
+				room.width = roomWidth;
+				room.height = roomHeight;
+			}).add<com::loading>();
+			//*/
+
+			/**/
+			player = world.entity("player").set([&]
+			(
+				com::position& p,
+				com::velocity& v,
+				com::rectBounds& bounds,
+				com::drawBounds & db
+				)
+			{
+				p = { roomWidth * 8.f, roomHeight * 8.f };
+				v = { 30, 20 };
+				bounds = { .width{12}, .height{24}, .xOffset{-6}, .yOffset{-6} };
+				db = { .color{sf::Color::Red}, .thickness = 1 };
+			}).add<com::loading>().add<com::player>();
+			//*/
 		}
+
+		// must be present for persistence 
+		// std::string sceneData;
+		// flecs::string json;
 
 		void step(float deltaTime)
 		{
 			world.progress(deltaTime);
+
+			ImGui::Begin("Debug");
+
+			if (ImGui::Button("Dump Scene"))
+			{
+				flecs::string json = world.to_json();
+				file::writeFile("dump.json", json.c_str());
+				dbg::log()->info(json.c_str());
+			}
+
+			if (ImGui::Button("Load Scene"))
+			{
+				world = flecs::world{};
+				if (monitorWorld)
+				{
+					world.set<flecs::Rest>({});
+					world.import<flecs::monitor>();
+				}
+				world.import<ecsRegistry>();
+
+				std::string sceneData;
+				file::readFile("dump.json", sceneData);
+				dbg::log()->info(sceneData);
+
+				// not expected to work
+				world.from_json(sceneData.data());
+			}
+
+			ImGui::End();
 
 			// TODO: transfer camera ownership to player
 			// sf::Vector2f newCamCenter(rooms[currentRoom].getWidth() / 2.f, rooms[currentRoom].getHeight() / 2.f);
